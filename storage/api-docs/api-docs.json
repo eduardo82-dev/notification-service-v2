@@ -1,0 +1,411 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Notification Service API",
+        "description": "API for sending mass notifications and tracking delivery statuses",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Service health check",
+                "description": "Returns the health status of PostgreSQL, Redis, and RabbitMQ with latency measurements.",
+                "operationId": "86f59596b50693fd899d11bc931d8060",
+                "responses": {
+                    "200": {
+                        "description": "All services are healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "healthy"
+                                        },
+                                        "services": {
+                                            "properties": {
+                                                "postgresql": {
+                                                    "properties": {
+                                                        "ok": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "latency_ms": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 1.23
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "redis": {
+                                                    "properties": {
+                                                        "ok": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "latency_ms": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 0.45
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "rabbitmq": {
+                                                    "properties": {
+                                                        "ok": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "latency_ms": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 2.1
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "One or more services are down",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "degraded"
+                                        },
+                                        "services": {
+                                            "properties": {
+                                                "postgresql": {
+                                                    "properties": {
+                                                        "ok": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "latency_ms": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 1.23
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "redis": {
+                                                    "properties": {
+                                                        "ok": {
+                                                            "type": "boolean",
+                                                            "example": false
+                                                        },
+                                                        "error": {
+                                                            "type": "string",
+                                                            "example": "Connection refused"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "rabbitmq": {
+                                                    "properties": {
+                                                        "ok": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "latency_ms": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 2.1
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/send": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Send mass notifications",
+                "description": "Accepts a batch of recipient IDs and dispatches notifications to the queue. Returns 202 Accepted with created notification records.",
+                "operationId": "cbff7c8e08218cafea5834936a7d73de",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "channel",
+                                    "message",
+                                    "recipient_ids",
+                                    "priority",
+                                    "idempotency_key"
+                                ],
+                                "properties": {
+                                    "channel": {
+                                        "type": "string",
+                                        "example": "sms",
+                                        "enum": [
+                                            "sms",
+                                            "email"
+                                        ]
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "example": "Your access code is 4829"
+                                    },
+                                    "recipient_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "sub_001",
+                                            "sub_002",
+                                            "sub_003"
+                                        ]
+                                    },
+                                    "priority": {
+                                        "type": "string",
+                                        "example": "transactional",
+                                        "enum": [
+                                            "transactional",
+                                            "marketing"
+                                        ]
+                                    },
+                                    "idempotency_key": {
+                                        "type": "string",
+                                        "example": "batch-2026-05-15-abc123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Batch accepted for processing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "idempotency_key": {
+                                            "type": "string",
+                                            "example": "batch-2026-05-15-abc123"
+                                        },
+                                        "total_recipients": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "priority": {
+                                            "type": "string",
+                                            "example": "transactional"
+                                        },
+                                        "channel": {
+                                            "type": "string",
+                                            "example": "sms"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/v1/subscribers/{subscriberId}/notifications": {
+            "get": {
+                "tags": [
+                    "Subscribers"
+                ],
+                "summary": "List subscriber notifications",
+                "description": "Returns paginated notification history for a specific subscriber, with optional filtering by status and channel.",
+                "operationId": "711cfd5ffbd42adfe073eee55f906631",
+                "parameters": [
+                    {
+                        "name": "subscriberId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "sub_001"
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "queued",
+                                "sent",
+                                "delivered",
+                                "rejected"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "channel",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sms",
+                                "email"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of notifications",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/NotificationResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "NotificationResource": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "9e1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+                    },
+                    "channel": {
+                        "type": "string",
+                        "example": "sms",
+                        "enum": [
+                            "sms",
+                            "email"
+                        ]
+                    },
+                    "recipient_id": {
+                        "type": "string",
+                        "example": "sub_001"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Your access code is 4829"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "example": "transactional",
+                        "enum": [
+                            "transactional",
+                            "marketing"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "queued",
+                        "enum": [
+                            "queued",
+                            "sent",
+                            "delivered",
+                            "rejected"
+                        ]
+                    },
+                    "attempts": {
+                        "type": "integer",
+                        "example": 0
+                    },
+                    "delivered_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "rejected_reason": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Health",
+            "description": "Health"
+        },
+        {
+            "name": "Notifications",
+            "description": "Notifications"
+        },
+        {
+            "name": "Subscribers",
+            "description": "Subscribers"
+        }
+    ]
+}
